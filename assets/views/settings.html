@@ -1,0 +1,185 @@
+<!DOCTYPE html>
+<html lang="de">
+
+<head>
+    <meta charset="UTF-8">
+    <title>Notepage | hub</title>
+    <!-- css & fontawesome -->
+    <link rel="stylesheet" type="text/css" href="../css/app.css">
+    <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/4.7.0/css/font-awesome.min.css">
+    <link rel="stylesheet" href="https://use.fontawesome.com/releases/v5.7.2/css/all.css">
+</head>
+
+<body>
+    <script> 
+        const prompt = require('electron-prompt');
+        const {ipcRenderer} = require('electron');
+        const fs = require('fs');
+
+        const package = require('../../package.json');
+        const projName = package.name;
+        const OSname = require("os").userInfo().username;
+        const homedir = require('os').homedir();
+        const platform = process.platform;
+
+        const dir = require('../../utils/path');
+
+        let path = dir.getHomepath(platform, projName, OSname, homedir);
+        const settings = dir.getSettings(fs, path);
+
+        /**let update_button = document.getElementById('isUpdate');
+        ipcRenderer.on('Update-found', (event, arg) =>{
+            upddate_button.innerHTML = '<button id="trigger-update"><i class="fas fa-arrow-alt-circle-down"></i></button>';
+        })*/
+    </script>
+    <div class="dragable">
+        <div id="version" class="text-container">Notepage vX.X.X</div>
+    </div> <!-- Dragable Area -->
+
+    <!-- Buttons (close, minimize, maximize) -->
+    <button class="btn" id="minimize"><i class="fas fa-window-minimize"></i></button>
+    <button class="btn" id="maximize"><i class="far fa-window-restore"></i></button>
+    <button class="btn" id="closeDown"><i class="fas fa-times"></i></button>
+    <!-- Buttons [END]-->
+
+    <!-- UI Area -->
+    <div class="topui">
+    </div>
+    <div class="main">
+
+        <!-- Back Redirection -->
+        <button style="position:absolute;bottom:20px;left:20px;width:200px;border:none;background-color:#00b894;color:white;padding: 5px 5px 5px 5px;border-radius:2px;" onclick="window.location.href = 'app.html';">Back</button>
+        <button style="position:absolute;bottom:20px;left:230px;width:200px;border:none;background-color:#00b894;color:white;padding: 5px 5px 5px 5px;border-radius:2px;" id="btn_Update">Update</button>
+        <button style="font-size: 15px; position:absolute;bottom:20px;left:440px;width:30%;border:none;background-color:#00b894;color:white;padding: 5px 5px 5px 5px;border-radius:2px;" disabled>Notepage(betabuild 690) was Made by steev &copy; 2018-2020</button>
+    
+        <!-- Settings Form -->
+        <form style="margin: 10px 10px 10px 10px;">
+            <h1 style="color:white;">Settings</h1>
+
+            <!-- Path Input -->
+            <label for="dir" style="color:white;font-weight: bold;">Storage Path <span id="stored"></span>:</label>
+            <br>
+            <select id="locations" style="width:98%;font-size:20px;background:none;border:none;border-radius:2px;background-color:#00b894;color:white;padding: 5px 5px 5px 5px;margin: 5px 5px 5px 5px;"></select>
+            <input id="dir" type="text" value="" placeholder="New Storage Location" style="width:98%;font-size:20px;background:none;border:none;border-radius:2px;background-color:#00b894;color:white;padding: 5px 5px 5px 5px;margin: 5px 5px 5px 5px;">
+            <button id="pushToLocations">Save</button>
+            <br><br>
+
+            <!-- Patch toggler -->
+            <label for="patcher" style="color:white;font-weight: bold;"> Patch Toggler</label>
+            <div id="patcher" style="margin: 10px 5px 10px 5px;border-radius:2px;background-color:#00b894;color:white;padding: 5px 10px 5px 10px;">
+                <span style="font-size: 20px;">Auto Patcher:
+                    <label class="switch">
+                        <input type="checkbox" id="check">
+                        <span class="slider round" slider round"></span>
+                    </label>
+                </span>
+            </div>
+            <!-- End Patch toggler -->
+
+        </form>
+        <!-- End Form -->
+
+    </div>
+    <script src="https://code.jquery.com/jquery-3.5.1.slim.min.js" integrity="sha384-DfXdz2htPH0lsSSs5nCTpuj/zy4C+OGpamoFVy38MVBnE+IbbVYUew+OrCXaRkfj" crossorigin="anonymous"></script>
+    <script>window.jQuery || document.write('<script src="https://getbootstrap.com//docs/4.5/assets/js/vendor/jquery.slim.min.js"><\/script>')</script>
+    <script src="https://getbootstrap.com/docs/4.5/dist/js/bootstrap.bundle.min.js" integrity="sha384-1CmrxMRARb6aLqgBO7yyAxTOQE2AKb9GfXnEo760AUcUmFx3ibVJJAzGytlQcNXd" crossorigin="anonymous"></script>
+    <script>
+        //grab version
+        const {version,buildnumber} = require('../../package.json');
+        document.getElementById('version').innerHTML = `Notepage v${version} ${buildnumber}`;
+
+        //Button Definition
+        const closeButton = document.getElementById('closeDown');
+        const maxButton = document.getElementById('maximize');
+        const minButton = document.getElementById('minimize');
+
+        //Button Event Handler
+        closeButton.addEventListener('click', function(){
+            window.close(); 
+            app.quit();
+        });
+
+        minButton.addEventListener('click', function(){ 
+            remote.BrowserWindow.getFocusedWindow().minimize(); 
+        });
+
+        maxButton.addEventListener('click', function(){
+            if (remote.getCurrentWindow().isFullScreen()) { 
+                remote.getCurrentWindow().setFullScreen(false); 
+            }else{ 
+                remote.getCurrentWindow().setFullScreen(true);  
+            } 
+        });
+
+        // Value grabber
+        let check = document.getElementById('check');
+        let pDir = document.getElementById('dir');
+
+        document.getElementById('btn_Update').addEventListener('click', () => {
+            ipcRenderer.send('getUpdate', "");
+            console.log('udpate');
+        })
+
+        // Setting UI Values
+        check.checked = settings.enablePatch;
+        pDir.value = settings.files[settings.locationToUse];
+
+        // patcher
+        let patcher = true;
+        check.checked = settings.enablePatch;
+        document.getElementById("stored").innerHTML = settings.files.length;
+
+        // Custom Location
+        let CustomLcation = document.getElementById("locations");
+        let submitButton = document.getElementById("pushToLocations");
+
+        submitButton.addEventListener('click', () => {
+            settings.files.forEach(e => {
+                if(pDir.value != e) {
+                    
+                    console.log(settings.files);
+                    settings.files.push(pDir.value);
+                }else{
+                    console.log("Allready Assigned");
+                }
+                fs.writeFile(`${path}/data/settings.json`, JSON.stringify(settings), (err) => {
+                    if (err) console.log(err)
+                });
+            });
+        })
+
+        for(let i = 0; i < settings.files.length; i++){
+            let option = document.createElement("option");
+            option.value = i;
+            let optionText = document.createTextNode(settings.files[i]);
+
+            if(settings.locationToUse == i){
+                console.log("true")
+                option.selected = true;
+            }
+
+            option.appendChild(optionText);
+            CustomLcation.appendChild(option);
+        }
+        CustomLcation.addEventListener('change', () => {
+            console.log(CustomLcation.value);
+            settings.locationToUse = CustomLcation.value;
+            fs.writeFile(`${path}/data/settings.json`, JSON.stringify(settings), (err) => {
+                if (err) console.log(err)
+            });
+        });
+
+        // Setitngs Verification 
+        check.addEventListener('change', () =>{
+            settings.enablePatch = check.checked;
+            
+            // Patcher Check
+            fs.writeFile(`${path}/data/settings.json`, JSON.stringify(settings), (err) => {
+                if (err) console.log(err)
+            });
+            console.log('changed to: ' + check.checked);
+        })
+    </script> <!-- Javascript -->
+</body>
+
+</html>

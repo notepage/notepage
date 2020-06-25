@@ -1,0 +1,74 @@
+{
+  "name": "notepage",
+  "version": "1.1.0",
+  "buildnumber": "BETABUILD_690",
+  "description": "",
+  "main": "app.js",
+  "scripts": {
+    "start": "set NODE_ENV=prod&& electron .",
+    "test": "set NODE_ENV=dev&& electron .",
+    "publish": "electron-builder -w --publish always",
+    "build": "electron-builder -w"
+  },
+  "build": {
+    "appId": "com.pixeldev.notepage",
+    "icon": "assets/icons/win/icon.ico",
+    "fileAssociations": [
+      {
+        "name": "Notepage Document",
+        "description": "A Notepage Document",
+        "ext": [
+          "npage"
+        ]
+      }
+    ],
+    "publish": [
+      {
+        "provider": "github",
+        "owner": "steevLP",
+        "repo": "notepage",
+        "private": true
+      }
+    ],
+    "nsis": {
+      "installerIcon": "assets/icons/win/icon.ico",
+      "uninstallerIcon": "assets/icons/win/icon.ico"
+    }
+  },
+  "repository": {
+    "type": "git",
+    "url": "git+https://github.com/steevLP/notepage.git"
+  },
+  "author": "steev",
+  "license": "ISC",
+  "bugs": {
+    "url": "https://github.com/steevLP/notepage/issues"
+  },
+  "homepage": "https://github.com/steevLP/notepage#readme",
+  "dependencies": {
+    "adm-zip": "^0.4.14",
+    "electron-log": "^4.2.2",
+    "electron-prompt": "^1.5.1",
+    "electron-updater": "^4.3.1",
+    "etl": "^0.6.12",
+    "fs": "*",
+    "hotkeys-js": "^3.8.1",
+    "html": "^1.0.0",
+    "html-pdf": "^2.2.0",
+    "html-pdf-chrome": "^0.6.0",
+    "ipc": "0.0.1",
+    "path": "^0.12.7",
+    "pdf": "^0.1.0",
+    "phantomjs": "^2.1.7",
+    "register-scheme": "0.0.2",
+    "remote": "^0.2.6",
+    "request": "^2.88.2",
+    "shelljs": "^0.8.4",
+    "unzipper": "^0.10.11"
+  },
+  "devDependencies": {
+    "electron": "^8.3.3",
+    "electron-builder": "^22.7.0",
+    "electron-packager": "^13.1.1"
+  }
+}

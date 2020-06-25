@@ -1,1 +1,1 @@
-Yes, you are allowed to fork and reuse this code. But you are required to name Steev and this repository Visible inside your application.
+You are allowed to Change contents of this codebase when you name the Author in your Application that results from forks or downloads of any kind. This code is allowed for commercial use when naming the origin of code the author wrote.

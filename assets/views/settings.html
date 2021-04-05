@@ -25,7 +25,12 @@
         const dir = require('../../utils/path');
 
         let path = dir.getHomepath(platform, projName, OSname, homedir);
+
+        console.log(path)
+
         const settings = dir.getSettings(fs, path);
+        console.log(settings);
+
 
         /**let update_button = document.getElementById('isUpdate');
         ipcRenderer.on('Update-found', (event, arg) =>{
@@ -80,9 +85,7 @@
         <!-- End Form -->
 
     </div>
-    <script src="https://code.jquery.com/jquery-3.5.1.slim.min.js" integrity="sha384-DfXdz2htPH0lsSSs5nCTpuj/zy4C+OGpamoFVy38MVBnE+IbbVYUew+OrCXaRkfj" crossorigin="anonymous"></script>
-    <script>window.jQuery || document.write('<script src="https://getbootstrap.com//docs/4.5/assets/js/vendor/jquery.slim.min.js"><\/script>')</script>
-    <script src="https://getbootstrap.com/docs/4.5/dist/js/bootstrap.bundle.min.js" integrity="sha384-1CmrxMRARb6aLqgBO7yyAxTOQE2AKb9GfXnEo760AUcUmFx3ibVJJAzGytlQcNXd" crossorigin="anonymous"></script>
+    <script src="https://cdn.jsdelivr.net/npm/bootstrap@5.0.0-beta3/dist/js/bootstrap.bundle.min.js" integrity="sha384-JEW9xMcG8R+pH31jmWH6WWP0WintQrMb4s7ZOdauHnUtxwoG2vI5DkLtS3qm9Ekf" crossorigin="anonymous"></script>
     <script>
         //grab version
         const {version,buildnumber} = require('../../package.json');
@@ -137,7 +140,7 @@
             settings.files.forEach(e => {
                 if(pDir.value != e) {
                     
-                    console.log(settings.files);
+                    //console.log(settings.files);
                     settings.files.push(pDir.value);
                 }else{
                     console.log("Allready Assigned");
@@ -151,6 +154,7 @@
         for(let i = 0; i < settings.files.length; i++){
             let option = document.createElement("option");
             option.value = i;
+            console.log(settings);
             let optionText = document.createTextNode(settings.files[i]);
 
             if(settings.locationToUse == i){

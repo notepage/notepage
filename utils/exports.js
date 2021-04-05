@@ -18,7 +18,7 @@ module.exports = {
             });
         }
     },
-    'save': (existing, editorContent, name, saveLocation) => {
+    /*'save': (existing, editorContent, name, saveLocation) => {
         //Storage
         // Checks if files is beeing newly created
         if(existing == "true"){
@@ -40,5 +40,12 @@ module.exports = {
                     fs.mkdirSync(`${settings.files[settings.locationToUse]}/files`);
                 }
             }
-        }
+        }*/
+    'save': (name, location) => {
+        /**
+         * TODO: 
+         * check for existence
+         * create or store file
+         */
+    }
 }

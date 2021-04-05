@@ -1,0 +1,620 @@
+<!doctype html>
+<html lang="en">
+    <head>
+        <!-- Required meta tags -->
+        <meta charset="utf-8">
+        <meta name="viewport" content="width=device-width, initial-scale=1, shrink-to-fit=no">
+
+        <!-- CSS only -->
+        <link rel="stylesheet" type="text/css" href="../css/app.css">
+        <link href="https://cdn.jsdelivr.net/npm/bootstrap@5.0.0-beta3/dist/css/bootstrap.min.css" rel="stylesheet" integrity="sha384-eOJMYsd53ii+scO/bJGFsiCZc+5NDVN2yr8+0RDqr0Ql0h+rP48ckxlpbzKgwra6" crossorigin="anonymous">
+        
+        <!-- fontawesome -->
+        <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/4.7.0/css/font-awesome.min.css">
+        <link rel="stylesheet" href="https://use.fontawesome.com/releases/v5.7.2/css/all.css">
+    </head>
+    <body>
+        <script>
+            const fs = require('fs');
+            const package = require('../../package.json');
+            const osName = require("os").userInfo().username;
+            const homedir = require('os').homedir();
+            const projName = package.name;
+            const platform = process.platform;
+            const prompt = require('electron-prompt');
+            const {ipcRenderer, dialog} = require('electron');
+
+            const dir = require('../../utils/path');
+
+            let path = dir.getHomepath(platform, projName, osName, homedir);
+            const settings = dir.getSettings(fs, path);
+            let saveLocation = settings.files[settings.locationToUse];
+            let existing = false;
+
+            function base64_encode(file) {
+                // read binary data
+                var bitmap = fs.readFileSync(file);
+                // convert binary data to base64 encoded string
+                return new Buffer(bitmap).toString('base64');
+            }
+
+            ipcRenderer.on('selected-file', function (event, path) {
+                console.log('Full path: ', path);
+            });
+
+            //Creates Link
+            function link() {
+                var url = prompt({
+                    title: 'Gib einen Link ein',
+                    label: 'URL',
+                    value: 'http://example.org',
+                    inputAttrs: {
+                        type: 'url'
+                    }
+                }).then((r) => {
+                    document.execCommand("createLink", false, r);
+                }).catch(console.error);
+            }
+            
+            document.addEventListener('drop', (e) => {
+                e.preventDefault();
+                e.stopPropagation();
+
+                for (const f of e.dataTransfer.files) {
+                    console.log('File(s) you dragged here: ', f.path);
+                    let d = new Date();
+                    let id = d.getTime() +"-"+ d.getDate() +"-"+ d.getMonth() +"-"+ d.getFullYear();
+
+                    console.log(id);
+
+                    document.execCommand('insertHTML',false,'<img class="customImage" alt="userImage" data-id="'+id+'" style="min-width:100px; max-width:1600px; width:auto; height:auto;" src="data:image/gif;base64,'+base64_encode(f.path)+'">');
+                }
+            });
+
+            document.addEventListener('dragover', (e) => {
+                e.preventDefault();
+                e.stopPropagation();
+            });
+
+            // image resizing
+            document.addEventListener('contextmenu', (e) => {
+                // Set default actions false
+                e.preventDefault();
+                let cMenu = document.getElementById('contextMenu');
+
+                // Toggles visibillity if active
+                if(cMenu.style.display == "flex"){
+                    cMenu.innerHTML = '<a id="conImageResize" style="padding: 10px 10px 10px 10px; text-align: center; color:white; background-color: #2ecc71; border-radius: 5px; width: 100%; height: 50px;">Resize</a>';
+                    cMenu.style.display = "none";
+                }
+
+                // Detects if the clicked item is a user made image
+                if(e.path[0].alt == "userImage"){
+
+                    // Debug stuff to see fancy data
+                    console.log(e);
+                    console.log(e.path);
+
+                    // caches the clicked image
+                    let img = e.path[0];
+
+                    let crop = (x, y) => {
+                        console.log(x);
+                    }
+
+                    displayContext(img, e.pageX, e.pageY);
+                }
+            });
+
+            function displayContext(img, x, y){
+                // Grab the html item
+                let cMenu = document.getElementById('contextMenu');
+                let mode = "hub"
+                cMenu.style.top =  y - 150 + "px";
+                cMenu.style.left = x - 200 + "px";
+
+                // checks if the menu is active
+                document.getElementById("conImageResize").addEventListener('click', (e) => {
+                    cMenu.alt = "resize";
+                    cMenu.innerHTML = '<form style="padding: 10px 10px 10px 10px;" id="crop"><div class="input-group mb-3">  <input id="width" type="number" class="form-control" placeholder="Image Width"> <div class="input-group-append"> <span class="input-group-text" id="basic-addon2">px</span> </div> </div> <div class="input-group mb-3"> <input type="number" id="height" class="form-control" placeholder="Image Height"> <div class="input-group-append"> <span class="input-group-text" id="basic-addon2">px</span> </div> </div><input type="button" id="btn" value="submit" style="margin-left: 15px; border: none; color:white; border-radius: 5px; background-color:#2ecc71; "></form>';
+                    
+                    // Adds the predefined values to the form
+                    document.getElementById('height').value = img.style.height;
+                    document.getElementById('width').value = img.style.width;
+
+                    document.getElementById('btn').addEventListener('click', (e) => {
+
+                        // Grabs values from the forms and submits them to the image
+                        if(document.getElementById('height').value != "" || document.getElementById('width').value != ""){
+
+                            // Applies the Gotten Values
+                            img.style.width = document.getElementById('width').value + "px";
+                            img.style.height = document.getElementById('height').value + "px";
+
+                            // Resets the Context Menu
+                            cMenu.innerHTML = '<a id="conImageResize" style="padding: 10px 10px 10px 10px; text-align: center; color:white; background-color: #2ecc71; border-radius: 5px; width: 100%; height: 50px;">Resize</a>';
+                            cMenu.style.display = "none";
+                        }
+                    })
+                })
+
+                // Toggles visibillity
+                if(cMenu.style.display == "none"){
+                    cMenu.style.display = "flex";
+                } else {
+                    cMenu.innerHTML = '<a id="conImageResize" style="padding: 10px 10px 10px 10px; text-align: center; color:white; background-color: #2ecc71; border-radius: 5px; width: 100%; height: 50px;">Resize</a>';
+                    cMenu.style.display = "none";
+                }
+            }
+
+            //Deletes Selected File
+            function remove(name){
+                /**
+                * @param {string} the name of the file to load
+                */
+                console.log(name);
+                if(name != ""){
+                    fs.unlinkSync(`${name}`);
+                    window.location.reload();
+                }else{
+                    alert("This file cant be removed or no file has been selected");
+                    return;
+                }
+            }
+
+            // Loads data and sends Name to Discord Richpresents function
+            /**
+            * @param {string} name: the name of the file to load
+            * @param {string} path: the path to the file to load
+            */
+            function loadData(name,path,strName){
+                let data = JSON.parse(fs.readFileSync(`${name}`, null, 4));
+                let title = document.getElementById('title');
+                let nameInput = document.getElementById('name');
+                let editor = document.querySelector(".editor");
+
+                ipcRenderer.send('opened',data.name);
+                editor.innerHTML = data['content'];
+                nameInput.value = data['name'];
+                
+                existing = true;
+                
+                document.getElementById('rm').setAttribute("onclick",`remove('${name}','')`);
+                document.getElementById('btnStore').setAttribute("onclick",`save('true','${strName}','${saveLocation}')`);
+
+                //Sending to discord Richpresence
+                ipcRenderer.send('checkForUpdate',`true`);
+                saveLocation = settings.files[settings.locationToUse];
+            }
+
+            //Adds differention line
+            function Differenter() {
+                var h = document.getElementById("editor");
+                h.insertAdjacentHTML("afterbegin", "<hr>");
+            }
+
+            let list = [];
+            let files = settings.files;
+
+            // Loops all Locations for files to read and Display
+            files.forEach(e => {
+                fs.readdir(`${e}/files`, function(err, items) { 
+                    console.log(items);
+                    for (var i=0; i<items.length; i++) {
+                        let data = JSON.parse(fs.readFileSync(`${e}/files/${items[i]}`, null, 4));
+                        let name = items[i];
+                        let name_only = items[i].substring(0,name.length - 6);
+                        let textnode = document.createTextNode(data['name']);
+                        let node = document.createElement("LI");
+
+                        node.setAttribute("onclick",`loadData('${e}/files/${items[i]}','${e}','${name_only}')`);
+                        node.classList.add ("note");
+                        node.appendChild(textnode);
+                        node.dataset.id = i;
+
+                        document.getElementById("note-list").appendChild(node);
+                    }
+                });       
+            });
+
+            //Colorpicker visibility code
+            function toggle_visibility(id) {
+                /** 
+                * @param {element} html element that gets toggled
+                */
+                var e = document.getElementById(id);
+                if(e.style.display == 'flex')
+                    e.style.display = 'none';
+                else
+                    e.style.display = 'flex';
+            }
+
+            function drop_down_toggle(id) {
+                /** 
+                * @param {element} html element that gets toggled
+                */
+                var e = document.getElementById(id);
+                if(e.style.display == 'block')
+                    e.style.display = 'none';
+                else
+                    e.style.display = 'block';
+
+            }
+
+
+            function onDisplayed(id){
+                /** 
+                * @param {element} html element that gets toggled
+                */
+                var e = document.getElementById(id);
+                if(e.style.display == 'flex')
+                    e.style.display = 'none';
+            }
+
+            //Templates document.executes('function', 'value');
+            function execute(arg1, arg2){
+                /**
+                 * @param {string} arg1 Value for Function to execute
+                 * @param {string} arg2 Value the Function will execute with
+                 */
+                return document.execCommand(arg1, false, arg2);
+            }
+
+            let save = (existing, name, saveLocation) => {
+                //Storage
+                let editorContent = document.getElementById('editor').innerHTML;
+                // Checks if files is beeing newly created
+                if(existing == "true"){
+                    if(fs.existsSync(`${saveLocation}`)){   
+                        fs.writeFileSync(`${saveLocation}/files/${name}.npage`,JSON.stringify({name:name, content:editorContent}));
+                    }
+                }else if(existing != "true" && saveLocation == ""){
+                    if(editorContent.length <= 0) return alert("You cannot store empty files");
+                        if(fs.existsSync(`${settings.files[settings.locationToUse]}/files`)){
+                            if(fs.existsSync(`${settings.files[settings.locationToUse]}/files/${name}.npage`)){   
+                                fs.writeFileSync(`${settings.files[settings.locationToUse]}/files/${name}.npage`,JSON.stringify({name:name, content:editorContent}));
+                            }else{
+                                fs.writeFileSync(`${settings.files[settings.locationToUse]}/files/${name}.npage`,JSON.stringify({name:name, content:editorContent}));
+                                //document.location.reload();
+                            }
+                        }else{
+                            fs.mkdirSync(`${settings.files[settings.locationToUse]}/files`);
+                        }
+                    }
+                }
+
+            let exportToPDF = (settings) => {
+                var options = {"format":'Letter'};
+                let pdf = require("../../../html-pdf");
+                let editorContent = document.getElementById('editor').innerHTML;
+
+                if(editorContent.length <= 0 )return alert("Empty exports aren't allowed!")
+            
+                if(fs.existsSync(settings.files[settings.locationToUse] + "/exports")){
+                    pdf.create(editorContent, options).toFile(settings.files[settings.locationToUse] + "/exports/" + document.getElementById('name').value + '.pdf', function(err, res) {
+                        if (err) return console.log(err);
+                        console.log(res); // { filename: '/app/businesscard.pdf' }
+                        alert("Your file has been exported as: '" + document.getElementById('name').value + '.pdf' + "' to your default storage location "+settings.files[settings.locationToUse] + "/exports/");
+                    });
+                }else{
+                    fs.mkdirSync(`${settings.files[settings.locationToUse]}/exports`);
+                    pdf.create(editorContent, options).toFile(settings.files[settings.locationToUse] + "/exports/" + document.getElementById('name').value + '.pdf', function(err, res) {
+                        if (err) return console.log(err);
+                        console.log(res); // { filename: '/app/businesscard.pdf' }
+                    });
+                }
+            }
+        </script>
+        <style>
+            body {
+                background: none;
+                background-color: none;
+            }
+            .dropdown-submenu {
+                position: relative;
+            }
+
+            .dropdown-submenu .dropdown-menu {
+                top: 0;
+                left: 100%;
+                margin-top: -1px;
+            }
+        </style>
+        <div class="dragable"><div id="version" class="text-container">Notepage v1.0.34</div> </div> <!-- Dragable Area -->
+        <div style="background-color:#10705d;">
+            <!-- Buttons (close, minimize, maximize) -->
+            <button class="btn" id="minimize"><i class="fas fa-window-minimize"></i></button>
+            <button class="btn" id="maximize"><i class="far fa-window-restore"></i></button>
+            <button class="btn btn_danger" id="closeDown"><i class="fas fa-times"></i></button>
+            <!-- Buttons [END]-->
+        </div>
+
+        <div class="topui">
+            <h1><form value="" style="margin-bottom: 5px;"><input style="background-color:#46cfa8; color:white; border:none; height: 30px;font-size: 30px;" placeholder="Note Name" type="text" id="name" value="" required="true"></form></h1>
+        </div>
+
+        <div class="main">
+            <div class="sideUI">
+                <ul id="note-list" class="note-list" style="position: absolute; bottom: 10px; top: 5px">
+                    <li style="margin-bottom: 5px;" class="note"><button style="border-radius: 2px; padding: 5px 5px 5px 5px; font-weight: bold; width: 98%; border:none; background-color:#2ecc71; color:white;" id="new">NewFile</button></li>
+                    <li class="note"><button style="border-radius: 2px; padding: 5px 5px 5px 5px; font-weight: bold; width: 98%; border:none; background-color:#fc5441; color:white;" id="rm">Delete</button></li>
+                    <hr>
+                    <li style="position: absolute; bottom: 0; left: 0; right: 10px;"><button style="width: 100%; border:none; background-color:#00b894; color:white; padding: 5px 5px 5px 5px; border-radius: 2px;" onclick="save(existing, document.getElementById('name').value, saveLocation);window.location.href = 'settings.html';">Settings</button></li>
+                </ul>
+            </div>
+        </div>
+
+        <div class="toolbar">
+            <!-- undo redo -->
+            <button class="tool-items fa fa-undo" onclick="document.execCommand('undo',false,'')"></button>
+            <button class="tool-items fa fa-repeat" onclick="document.execCommand('redo',false,'')"></button>
+
+            <style>
+                .dropdown-item { width:170px;background:0 0;border:none;background-color:#00b894;padding:5px 5px 5px 5px;color:#fff;font-family: Arial, Helvetica, sans-serif; }
+                .dropdown-item:hover { background-color: #005e4b; }
+                .dropdown-content { position:absolute;background-color:#f1f1f1;width:170px;z-index:1;font-family: Arial, Helvetica, sans-serif; }
+                .dropdown:hover .dropdown-content { display:block }
+                .dropdown-submenu {  position: relative; }
+                .dropdown-submenu a::after { transform: rotate(-90deg); position: absolute; right: 6px; top: .8em; }
+                .dropdown-submenu .dropdown-menu { top: 0; left: 100%; margin-left: .1rem; margin-right: .1rem; }
+            </style>
+
+            <div class="dropdown show">
+                <button class="tool-items dropdown-toggle" href="#" role="button" id="dropdownMenuLink" data-toggle="dropdown" aria-haspopup="true" aria-expanded="false"> Insert </button>
+                    <ul class="dropdown-menu" aria-labelledby="dropdownMenuLink">
+                        <li class="dropdown-submenu"><a class="dropdown-item dropdown-toggle" href="#">Font Sizes</a>
+                            <ul class="dropdown-menu">
+                                <li onclick="document.execCommand('formatBlock', false, 'p')"><button style="width:100%;background: none; border:none;"><p>Paragraph</p></button></li>
+                                <li onclick="document.execCommand('formatBlock', false, 'h1')"><button style="width:100%;background: none; border:none;"><h1>Title</h1></button></li>
+                                <li onclick="document.execCommand('formatBlock', false, 'h2')"><button style="width:100%;background: none; border:none;"><h2>Title</h2></button></li>                                        
+                                <li onclick="document.execCommand('formatBlock', false, 'h3')"><button style="width:100%;background: none; border:none;"><h3>Title</h3></button></li>
+                                <li onclick="document.execCommand('formatBlock', false, 'h4')"><button style="width:100%;background: none; border:none;"><h4>Title</h4></button></li>
+                                <li onclick="document.execCommand('formatBlock', false, 'h5')"><button style="width:100%;background: none; border:none;"><h5>Title</h5></button></li>                                        
+                                <li onclick="document.execCommand('formatBlock', false, 'h6')"><button style="width:100%;background: none; border:none;"><h6>Title</h6></button></li>
+                            </ul>
+                        </li>
+                        <li class="dropdown-submenu"><a class="dropdown-item dropdown-toggle" href="#">Font Styles</a>
+                            <ul class="dropdown-menu">
+                                <li onclick="document.execCommand('strikeThrough',false,'')"><button style="width:100%;background: none; border:none;"><s>Strike Through</s></button></li>
+                                <li onclick="document.execCommand('bold',false,'')"><button style="width:100%;background: none; border:none;"><b>Bold</b></button></li>
+                                <li onclick="document.execCommand('underline',false,'')"><button style="width:100%;background: none; border:none;"><u>Underline</u></button></li>
+                                <li onclick="document.execCommand('italic',false,'')"><button style="width:100%;background: none; border:none;"><i>Italic</i></button></li>
+                            </ul>
+                        </li>                                  
+                        <li class="dropdown-submenu"><a class="dropdown-item dropdown-toggle" href="#">Insert List</a>
+                            <ul class="dropdown-menu">
+                                <li onclick="document.execCommand('insertOrderedList')"><button style="width:100%;background: none; border:none;">Ordered List</button></li>
+                                <li onclick="document.execCommand('insertUnorderedList')"><button style="width:100%;background: none; border:none;">Unordered List</button></li>
+                            </ul>
+                        </li>    
+                    </ul>
+                </div>
+
+            <div class="dropdown">
+                <button class="tool-items dropdown-toggle" type="button" id="dropdownMenuButton" data-toggle="dropdown" aria-haspopup="true" aria-expanded="false"> Fonts </button>
+                    <div class="dropdown-menu">
+                        <a class="dropdown-item" onclick="document.getElementById('editor').style.fontFamily = 'Arial';" style="color:white;"> <span style="font-family: Arial;">Arial</span> </a>
+                        <a class="dropdown-item" onclick="document.getElementById('editor').style.fontFamily = 'Verdana';" style="color:white;"> <span style="font-family: Verdana;">Verdana</span> </a>
+                        <a class="dropdown-item" onclick="document.getElementById('editor').style.fontFamily = 'Trebuchet MS';" style="color:white;"> <span style="font-family: Trebuchet MS;">Trebuchet MS</span> </a>
+                        <a class="dropdown-item" onclick="document.getElementById('editor').style.fontFamily = 'Times New Roman';" style="color:white;"> <span style="font-family: Times New Roman;">Times New Roman</span> </a>
+                        <a class="dropdown-item" onclick="document.getElementById('editor').style.fontFamily = 'Helvetica';" style="color:white;"> <span style="font-family: Helvetica;">Helvetica</span> </a>
+                        <a class="dropdown-item" onclick="document.getElementById('editor').style.fontFamily = 'American Typewriter';" style="color:white;"> <span style="font-family: American Typewriter;">American Typewriter</span> </a>
+                        <a class="dropdown-item" onclick="document.getElementById('editor').style.fontFamily = 'Andale Mono';" style="color:white;"> <span style="font-family: Andale Mono;">Andale Mono</span> </a>
+                        <a class="dropdown-item" onclick="document.getElementById('editor').style.fontFamily = 'Courier';" style="color:white;"> <span style="font-family: Courier;">Courier</span> </a>
+                        <a class="dropdown-item" onclick="document.getElementById('editor').style.fontFamily = 'Bradley Hand';" style="color:white;"> <span style="font-family: Bradley Hand;">Bradley Hand</span> </a>
+                        <a class="dropdown-item" onclick="document.getElementById('editor').style.fontFamily = 'Luminari';" style="color:white;"> <span style="font-family: Luminari;">Luminari</span> </a>
+                </div>
+            </div>
+
+            <div class="dropdown">
+                <button class="tool-items dropdown-toggle" type="button" id="dropdownMenuButton" data-toggle="dropdown" aria-haspopup="true" aria-expanded="false"> Font Size </button>
+                <div class="dropdown-menu" id="menu" style="overflow-y: scroll; max-height: 500px;">
+                    <script>
+                        for(let i = 5; i < 201; i++){
+                            let menu = document.getElementById('menu');
+                            let aTag = document.createElement("a");
+                            let aText = document.createTextNode(i);
+
+                            aTag.classList = "dropdown-item";
+                            aTag.onclick = function(){document.getElementById('editor').style.fontSize = i + "px" };
+                            aTag.appendChild(aText);
+                            menu.appendChild(aTag);
+                        }
+                    </script>
+                </div>
+            </div>
+    
+            <!-- Alignment -->
+            <button class="tool-items fa fa-align-left" onclick="document.execCommand('justifyLeft',false,'')"></button>
+            <button class="tool-items fa fa-align-center" onclick="document.execCommand('justifyCenter',false,'')"></button>
+            <button class="tool-items fa fa-align-right" onclick="document.execCommand('justifyRight',false,'')"></button>
+            <!-- misc -->
+            <button class="tool-items fas fa-tint" onclick="onDisplayed('bgcolorPicker'); toggle_visibility('colorPicker')"></button>
+            <button class="tool-items fas fa-highlighter" onclick="onDisplayed('colorPicker'); toggle_visibility('bgcolorPicker')"></button>
+            <!-- Save -->
+            <button class="tool-items fas fa-save" id="btnStore" onclick="save('false', document.getElementById('name').value,'')"></button>
+            <button class="tool-items fa fa-file-export" onclick="exportToPDF(settings)"></button>
+
+            <div id="colorPicker" style="display:none;">
+                <ul class="pickerBody" style="height: 50px; overflow-y: scroll;">
+                    <div style="width: 100%;"> 
+                        <button class="pickerItem" onclick="toggle_visibility('colorPicker'); execute('foreColor', '#fab1a0');" style="color:#fab1a0;"><i class="fas fa-square"></i></button>
+                        <button class="pickerItem" onclick="toggle_visibility('colorPicker'); execute('foreColor', '#d63031');" style="color:#d63031;"><i class="fas fa-square"></i></button>
+                        <button class="pickerItem" onclick="toggle_visibility('colorPicker'); execute('foreColor', '#c0392b');" style="color:#c0392b;"><i class="fas fa-square"></i></button>
+                        <button class="pickerItem" onclick="toggle_visibility('colorPicker'); execute('foreColor', '#e17055');" style="color:#e17055;"><i class="fas fa-square"></i></button>
+                        <button class="pickerItem" onclick="toggle_visibility('colorPicker'); execute('foreColor', '#d35400');" style="color:#d35400;"><i class="fas fa-square"></i></button>
+                        <button class="pickerItem" onclick="toggle_visibility('colorPicker'); execute('foreColor', '#f39c12');" style="color:#f39c12;"><i class="fas fa-square"></i></button>
+                        <button class="pickerItem" onclick="toggle_visibility('colorPicker'); execute('foreColor', '#f1c40f');" style="color:#f1c40f;"><i class="fas fa-square"></i></button>
+                        <button class="pickerItem" onclick="toggle_visibility('colorPicker'); execute('foreColor', '#fdcb6e');" style="color:#fdcb6e;"><i class="fas fa-square"></i></button>
+                        <button class="pickerItem" onclick="toggle_visibility('colorPicker'); execute('foreColor', '#ffeaa7');" style="color:#ffeaa7;"><i class="fas fa-square"></i></button>
+                        <button class="pickerItem" onclick="toggle_visibility('colorPicker'); execute('foreColor', '#2ecc71');" style="color:#2ecc71;"><i class="fas fa-square"></i></button>
+                        <button class="pickerItem" onclick="toggle_visibility('colorPicker'); execute('foreColor', '#1abc9c');" style="color:#1abc9c;"><i class="fas fa-square"></i></button>
+                        <button class="pickerItem" onclick="toggle_visibility('colorPicker'); execute('foreColor', '#55efc4');" style="color:#55efc4;"><i class="fas fa-square"></i></button>
+                        <button class="pickerItem" onclick="toggle_visibility('colorPicker'); execute('foreColor', '#81ecec');" style="color:#81ecec;"><i class="fas fa-square"></i></button>
+                        <button class="pickerItem" onclick="toggle_visibility('colorPicker'); execute('foreColor', '#00cec9');" style="color:#00cec9;"><i class="fas fa-square"></i></button>
+                        <button class="pickerItem" onclick="toggle_visibility('colorPicker'); execute('foreColor', '#74b9ff');" style="color:#74b9ff;"><i class="fas fa-square"></i></button>
+                        <button class="pickerItem" onclick="toggle_visibility('colorPicker'); execute('foreColor', '#2980b9');" style="color:#2980b9;"><i class="fas fa-square"></i></button>                        
+                        <button class="pickerItem" onclick="toggle_visibility('colorPicker'); execute('foreColor', '#0984e3');" style="color:#0984e3;"><i class="fas fa-square"></i></button>
+                        <button class="pickerItem" onclick="toggle_visibility('colorPicker'); execute('foreColor', '#6c5ce7');" style="color:#6c5ce7;"><i class="fas fa-square"></i></button>
+                        <button class="pickerItem" onclick="toggle_visibility('colorPicker'); execute('foreColor', '#a29bfe');" style="color:#a29bfe;"><i class="fas fa-square"></i></button>
+                        <button class="pickerItem" onclick="toggle_visibility('colorPicker'); execute('foreColor', '#9b59b6');" style="color:#9b59b6;"><i class="fas fa-square"></i></button>
+                        <button class="pickerItem" onclick="toggle_visibility('colorPicker'); execute('foreColor', '#8e44ad');" style="color:#8e44ad;"><i class="fas fa-square"></i></button>
+                        <button class="pickerItem" onclick="toggle_visibility('colorPicker'); execute('foreColor', '#2d3436');" style="color:#2d3436;"><i class="fas fa-square"></i></button>
+                        <button class="pickerItem" onclick="toggle_visibility('colorPicker'); execute('foreColor', '#2c3e50');" style="color:#2c3e50;"><i class="fas fa-square"></i></button>
+                        <button class="pickerItem" onclick="toggle_visibility('colorPicker'); execute('foreColor', '#34495e');" style="color:#34495e;"><i class="fas fa-square"></i></button>                        
+                        <button class="pickerItem" onclick="toggle_visibility('colorPicker'); execute('foreColor', '#7f8c8d');" style="color:#7f8c8d;"><i class="fas fa-square"></i></button>
+                        <button class="pickerItem" onclick="toggle_visibility('colorPicker'); execute('foreColor', '#636e72');" style="color:#636e72;"><i class="fas fa-square"></i></button>
+                        <button class="pickerItem" onclick="toggle_visibility('colorPicker'); execute('foreColor', '#95a5a6');" style="color:#95a5a6;"><i class="fas fa-square"></i></button>
+                        <button class="pickerItem" onclick="toggle_visibility('colorPicker'); execute('foreColor', '#b2bec3');" style="color:#b2bec3;"><i class="fas fa-square"></i></button>
+                        <button class="pickerItem" onclick="toggle_visibility('colorPicker'); execute('foreColor', '#bdc3c7');" style="color:#bdc3c7;"><i class="fas fa-square"></i></button>
+                        <button class="pickerItem" onclick="toggle_visibility('colorPicker'); execute('foreColor', '#dfe6e9');" style="color:#dfe6e9;"><i class="fas fa-square"></i></button>
+                        <button class="pickerItem" onclick="toggle_visibility('colorPicker'); execute('foreColor', '#ecf0f1');" style="color:#ecf0f1;"><i class="fas fa-square"></i></button>
+                        <button class="pickerItem" onclick="toggle_visibility('colorPicker'); execute('foreColor', 'black');" style="color:black;"><i class="fas fa-square"></i></button>
+                    </div>
+                </ul>
+            </div>
+            <div id="bgcolorPicker" style="display:none;">
+                <ul class="pickerBody" style="height: 50px; overflow-y: scroll;">
+                    <div style="width: 100%;"> 
+                        <button class="pickerItem" onclick="toggle_visibility('colorPicker'); execute('backColor', '#fab1a0');" style="color:#fab1a0;"><i class="fas fa-square"></i></button>
+                        <button class="pickerItem" onclick="toggle_visibility('colorPicker'); execute('backColor', '#d63031');" style="color:#d63031;"><i class="fas fa-square"></i></button>
+                        <button class="pickerItem" onclick="toggle_visibility('colorPicker'); execute('backColor', '#c0392b');" style="color:#c0392b;"><i class="fas fa-square"></i></button>
+                        <button class="pickerItem" onclick="toggle_visibility('colorPicker'); execute('backColor', '#e17055');" style="color:#e17055;"><i class="fas fa-square"></i></button>
+                        <button class="pickerItem" onclick="toggle_visibility('colorPicker'); execute('backColor', '#d35400');" style="color:#d35400;"><i class="fas fa-square"></i></button>
+                        <button class="pickerItem" onclick="toggle_visibility('colorPicker'); execute('backColor', '#f39c12');" style="color:#f39c12;"><i class="fas fa-square"></i></button>
+                        <button class="pickerItem" onclick="toggle_visibility('colorPicker'); execute('backColor', '#f1c40f');" style="color:#f1c40f;"><i class="fas fa-square"></i></button>
+                        <button class="pickerItem" onclick="toggle_visibility('colorPicker'); execute('backColor', '#fdcb6e');" style="color:#fdcb6e;"><i class="fas fa-square"></i></button>
+                        <button class="pickerItem" onclick="toggle_visibility('colorPicker'); execute('backColor', '#ffeaa7');" style="color:#ffeaa7;"><i class="fas fa-square"></i></button>
+                        <button class="pickerItem" onclick="toggle_visibility('colorPicker'); execute('backColor', '#2ecc71');" style="color:#2ecc71;"><i class="fas fa-square"></i></button>
+                        <button class="pickerItem" onclick="toggle_visibility('colorPicker'); execute('backColor', '#1abc9c');" style="color:#1abc9c;"><i class="fas fa-square"></i></button>
+                        <button class="pickerItem" onclick="toggle_visibility('colorPicker'); execute('backColor', '#55efc4');" style="color:#55efc4;"><i class="fas fa-square"></i></button>
+                        <button class="pickerItem" onclick="toggle_visibility('colorPicker'); execute('backColor', '#81ecec');" style="color:#81ecec;"><i class="fas fa-square"></i></button>
+                        <button class="pickerItem" onclick="toggle_visibility('colorPicker'); execute('backColor', '#00cec9');" style="color:#00cec9;"><i class="fas fa-square"></i></button>
+                        <button class="pickerItem" onclick="toggle_visibility('colorPicker'); execute('backColor', '#74b9ff');" style="color:#74b9ff;"><i class="fas fa-square"></i></button>
+                        <button class="pickerItem" onclick="toggle_visibility('colorPicker'); execute('backColor', '#2980b9');" style="color:#2980b9;"><i class="fas fa-square"></i></button>                        
+                        <button class="pickerItem" onclick="toggle_visibility('colorPicker'); execute('backColor', '#0984e3');" style="color:#0984e3;"><i class="fas fa-square"></i></button>
+                        <button class="pickerItem" onclick="toggle_visibility('colorPicker'); execute('backColor', '#6c5ce7');" style="color:#6c5ce7;"><i class="fas fa-square"></i></button>
+                        <button class="pickerItem" onclick="toggle_visibility('colorPicker'); execute('backColor', '#a29bfe');" style="color:#a29bfe;"><i class="fas fa-square"></i></button>
+                        <button class="pickerItem" onclick="toggle_visibility('colorPicker'); execute('backColor', '#9b59b6');" style="color:#9b59b6;"><i class="fas fa-square"></i></button>
+                        <button class="pickerItem" onclick="toggle_visibility('colorPicker'); execute('backColor', '#8e44ad');" style="color:#8e44ad;"><i class="fas fa-square"></i></button>
+                        <button class="pickerItem" onclick="toggle_visibility('colorPicker'); execute('backColor', '#2d3436');" style="color:#2d3436;"><i class="fas fa-square"></i></button>
+                        <button class="pickerItem" onclick="toggle_visibility('colorPicker'); execute('backColor', '#2c3e50');" style="color:#2c3e50;"><i class="fas fa-square"></i></button>
+                        <button class="pickerItem" onclick="toggle_visibility('colorPicker'); execute('backColor', '#34495e');" style="color:#34495e;"><i class="fas fa-square"></i></button>                        
+                        <button class="pickerItem" onclick="toggle_visibility('colorPicker'); execute('backColor', '#7f8c8d');" style="color:#7f8c8d;"><i class="fas fa-square"></i></button>
+                        <button class="pickerItem" onclick="toggle_visibility('colorPicker'); execute('backColor', '#636e72');" style="color:#636e72;"><i class="fas fa-square"></i></button>
+                        <button class="pickerItem" onclick="toggle_visibility('colorPicker'); execute('backColor', '#95a5a6');" style="color:#95a5a6;"><i class="fas fa-square"></i></button>
+                        <button class="pickerItem" onclick="toggle_visibility('colorPicker'); execute('backColor', '#b2bec3');" style="color:#b2bec3;"><i class="fas fa-square"></i></button>
+                        <button class="pickerItem" onclick="toggle_visibility('colorPicker'); execute('backColor', '#bdc3c7');" style="color:#bdc3c7;"><i class="fas fa-square"></i></button>
+                        <button class="pickerItem" onclick="toggle_visibility('colorPicker'); execute('backColor', '#dfe6e9');" style="color:#dfe6e9;"><i class="fas fa-square"></i></button>
+                        <button class="pickerItem" onclick="toggle_visibility('colorPicker'); execute('backColor', '#ecf0f1');" style="color:#ecf0f1;"><i class="fas fa-square"></i></button>
+                        <button class="pickerItem" onclick="toggle_visibility('colorPicker'); execute('backColor', 'black');" style="color:black;"><i class="fas fa-square"></i></button>
+                    </div>
+                </ul>
+            </div>
+        </div>
+
+        <!-- wysiwyg editor-->
+        <div class="center">
+            <div alt="hub" id="contextMenu" style="position:absolute; left:0; right:0; border-radius: 5px; width: 200px; height: 150px; display:none; background-color: #fff; border:1px solid #c2c2c2;">
+                <a id="conImageResize" style="padding: 10px 10px 10px 10px; text-align: center; color:white; background-color: #2ecc71; border-radius: 5px; width: 100%; height: 50px;">Resize</a>
+            </div>
+            <div class="editor" id="editor" style="font-family: Arial; font-size: 15px;" contenteditable="true"></div>
+        </div>
+
+        <script src="https://cdn.jsdelivr.net/npm/bootstrap@5.0.0-beta3/dist/js/bootstrap.bundle.min.js" integrity="sha384-JEW9xMcG8R+pH31jmWH6WWP0WintQrMb4s7ZOdauHnUtxwoG2vI5DkLtS3qm9Ekf" crossorigin="anonymous"></script>
+        <script>
+            const root = "../../"
+            const {version,buildnumber} = require(root + 'package.json');
+            let lib = require(root + "utils/exports");
+
+            for(let i = 1; i < 150; i++){
+                let option = document.createElement('option');
+                let node = document.createTextNode(i);
+                option.appendChild(node);
+                option.value = i;
+    
+                //document.getElementById("sdd").appendChild(option);
+            }
+    
+            // Ensures libaries are where they should be
+           /* const request = require('request');
+            const shelljs= require('shelljs');
+            const zip = require('adm-zip');
+            const etl = require('etl');
+
+            // Downloads and unzips if needed
+            if(!fs.existsSync(`C:/Users/${osName}/Documents/${projName}/data/versions.json`)){
+                request('https://cdn.slpnetwork.de/dl/pdflib.zip')
+                .pipe(fs.createWriteStream('./resources/bootstrap.zip'))
+                .on('close', function () {
+                    console.log('File written!');
+                    new zip("./resources/bootstrap.zip").extractAllTo("./resources", true);
+                    let lib = {"pdf-lib": 1.0 };
+                    fs.writeFileSync(`C:/Users/${osName}/Documents/${projName}/data/versions.json`, lib);
+                    shelljs.rm("./resources/bootstrap.zip");
+                });
+            }*/
+    
+            document.getElementById('version').innerHTML = `Notepage v${version} ${buildnumber}`;
+
+            // Render Comunication to get Data from Main Proccess after detection
+            var ipc = require('electron').ipcRenderer;
+            var data = ipc.sendSync('get-file-data');
+            if (data ===  null) {
+                document.write("There is no file");
+            } else {
+                document.getElementById('name').value = data.name;
+                document.querySelector(".editor").innerHTML = data.content;
+                document.getElementById('btnStore').setAttribute("onclick",`save('external','${data.name}','${data.path}')`);
+                saveLocation = data.path;
+            }
+    
+            // Content Mangemenent
+            //Autosave
+
+            let safe = (existing, name, saveLocation) => {
+            //Storage
+            let editorContent = document.getElementById('editor').innerHTML;
+            // Checks if files is beeing newly created
+            if(existing == "true"){
+                if(fs.existsSync(`${saveLocation}`)){   
+                    fs.writeFileSync(`${saveLocation}/files/${name}.npage`,JSON.stringify({name:name, content:editorContent}));
+                }
+            }else if(existing != "true" && saveLocation == ""){
+                if(editorContent.length <= 0) return alert("You cannot store empty files");
+                    if(fs.existsSync(`${settings.files[settings.locationToUse]}/files`)){
+                        if(fs.existsSync(`${settings.files[settings.locationToUse]}/files/${name}.npage`)){   
+                            fs.writeFileSync(`${settings.files[settings.locationToUse]}/files/${name}.npage`,JSON.stringify({name:name, content:editorContent}));
+                        }else{
+                            fs.writeFileSync(`${settings.files[settings.locationToUse]}/files/${name}.npage`,JSON.stringify({name:name, content:editorContent}));
+                            //document.location.reload();
+                        }
+                    }else{
+                        fs.mkdirSync(`${settings.files[settings.locationToUse]}/files`);
+                    }
+                } else if (existing == "external") {
+                    fs.writeFileSync(`${saveLocation}`,JSON.stringify({name:name, content:editorContent}));
+                }
+            }
+
+            setInterval(() =>{
+                safe(existing, document.getElementById('name').value, saveLocation);
+            }, 10000);
+    
+            $('.dropdown-menu a.dropdown-toggle').on('click', function(e) {
+                if (!$(this).next().hasClass('show')) {
+                    $(this).parents('.dropdown-menu').first().find('.show').removeClass("show");
+                }
+                var $subMenu = $(this).next(".dropdown-menu");
+                $subMenu.toggleClass('show');
+
+                $(this).parents('li.nav-item.dropdown.show').on('hidden.bs.dropdown', function(e) {
+                    $('.dropdown-submenu .show').removeClass("show");
+                });
+                return false;
+            });
+
+            require('../js/app.js');
+        </script> <!-- Javascript -->
+    </body>
+</html>
